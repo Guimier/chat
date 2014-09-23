@@ -1,0 +1,62 @@
+#!/bin/bash
+# Chat simple — Utilitaire de salutation automatique d’un utilisateur.
+# Lucien Guimier, 2014
+#
+# Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le
+# modifier suivant les termes de la WTFPL, version 2, telle que publiée
+# par Sam Hocevar.
+#
+# Ce programme est distribué dans l’espoir qu’il sera utile, mais SANS
+# AUCUNE GARANTIE, dans la limite de ce qui est autorisé par la loi. Il
+# n’y a en particulier aucune garantie tacite de QUALITÉ MARCHANDE ou
+# d’ADÉQUATION À UN BUT PARTICULIER.
+#
+# Vous devez avoir reçu une copie de la WTFPL en même temps que ce
+# programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
+
+IP="$( dirname "$( readlink --canonicalize "$0" )" )"
+source "$IP/lib"
+
+connecte=0
+declare -a connectes
+nb=`expr $# - 1`
+
+if [ "$#" -gt 2 ] && [ "$2" = -c ]
+then
+	let nb++
+	tous=true
+else
+	tous=false
+fi
+
+if [ "$#" -lt 2 ]
+then
+	echo
+	echo $_ui_erreur"Pas d’utilisateurs"$_ui_defaut
+	ligneEntree
+else
+	while [ $connecte -lt $nb ]
+	do
+		connecte=0
+		for i in `seq 2 $#`
+		do
+			if [ _${connectes[$i]} != _1 ]
+			then
+				u=`echo $@ | cut -d' ' -f "$i"`
+				hu=`home $u`
+				if [ -f "$hu/online.cat" ] && ( $tous || grep -xF "$canal" "$hu/online.cat" >> "$_journal" 2>&1 )
+				then
+					pu=`cat "$hu/pseudo.cat"`
+					connectes[$i]=1
+					pseudo=`cat "$HOME/pseudo.cat"`
+					me "salue $pu"
+					echo
+					echo $_ui_pseudo$pu$_ui_defaut est arrivé
+					ligneEntree
+					connecte=`expr $connecte + 1`
+				fi
+			fi
+		done
+		sleep 1
+	done
+fi

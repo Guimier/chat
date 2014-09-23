@@ -1,0 +1,557 @@
+#!/bin/bash
+# Chat simple — Fonctions communes
+# Lucien Guimier, 2014
+#
+# Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le
+# modifier suivant les termes de la WTFPL, version 2, telle que publiée
+# par Sam Hocevar.
+#
+# Ce programme est distribué dans l’espoir qu’il sera utile, mais SANS
+# AUCUNE GARANTIE, dans la limite de ce qui est autorisé par la loi. Il
+# n’y a en particulier aucune garantie tacite de QUALITÉ MARCHANDE ou
+# d’ADÉQUATION À UN BUT PARTICULIER.
+#
+# Vous devez avoir reçu une copie de la WTFPL en même temps que ce
+# programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
+
+# Protection contre l’inclusion
+[ "${#BASH_SOURCE[@]}" -gt 1 ] || {
+	echo "Tentative d’exécution directe d’une bibliothèque"
+	exit 1;
+}
+
+# Chargement des couleurs pouvant être utilisées pour la configuration
+source "$IP/couleurs"
+
+# Chargement de la configuration par défaut
+source "$IP/config"
+
+# Chargement de la configuration de l’utilisateur
+if [ -f "$HOME/.chat.conf" ]
+then
+	source "$HOME/.chat.conf"
+fi
+
+########## Aléatoire ##########
+
+# Renvoie un nombre aléatoire entre 0 (inclus) et $1 (exclus)
+aleatoire() {
+	expr "$RANDOM" % "$1" 2>> "$_journal" # TODO Le modulo est Mal™
+}
+
+# Tire un nombre entre 1 et 100 pouis l’affiche
+tirage() {
+	valeur=`aleatoire 100`
+	let valeur++
+	me "a tiré un $valeur"
+}
+
+# Fait le café (ou pas)
+# Premier argument : commande initiale
+cafe() {
+	case `aleatoire 3` in
+		0)         me $_d_messageAutomatique'doit changer le filtre de la cafetière';;
+		1)         me $_d_messageAutomatique'a oublié de racheter du café';;
+		2)         message "$_d_messageAutomatique$1://172.17.255.42 Erreur 418"
+	esac
+}
+
+########## Entrée utilisateur ##########
+
+# Lire une chaîne contenant des caractères non blancs
+chaineNonNulle() {
+	while ! ( echo "$str" | grep '\S' >> "$_journal" )
+	do
+		read str
+	done
+	echo "$str"
+}
+
+########## Gestion du titre de la fenêtre ##########
+
+# Change le titre de la fenêtre pour la valeur du premier argument
+titreFenetre() {
+	if [ "$SESSIONTYPE" = "gnome-session" ] # COLORTERM
+	then
+		unset PROMPT_COMMAND
+		echo -en "\033]1;$1\007"
+		echo -en "\033]2;$1\007"
+	fi
+}
+
+# Met à jour le titre de la fenêtre de contrôle
+titreFenetreConverser() {
+	if $_sujet
+	then
+		titreFenetre "`pseudo` | $USER@$discussion | `afficherSujet`"
+	else
+		titreFenetre "`pseudo` | $USER@$discussion"
+	fi
+}
+
+########## Lecture/modification des informations sur les utilisateurs ##########
+
+# Renvoie le dossier /home/ de l’utilisateur passé comme argument
+home() {
+	eval echo -n ~$1
+}
+
+# Renvoie le pseudo de l’utilisateur courant
+pseudo() {
+	cat "$HOME/pseudo.cat"
+}
+
+# Définit le pseudo de l’utilisateur courant pour la valeur donnée en premier paramètre
+definirPseudo() {
+	if echo "$1" | grep '\S' >> "$_journal"
+	then
+		pseudo="$1"
+		echo "$1" > "$HOME/pseudo.cat"
+		chmod g+r "$HOME/pseudo.cat"
+	else
+		echo $_ui_erreur'Il est interdit de définir un pseudo vide'$_ui_defaut
+	fi
+}
+
+########## Envoi de messages sur le canal de discussion ##########
+
+# Envoie un message daté ayant comme contenu le premier argument
+messageBrut() {
+	(
+		echo -n $_d_date`date '+%d/%m/%y %H:%M:%S'`
+		echo $_d_message "$1"
+		echo -n $_d_defaut # Nettoyage couleur éventuelle
+	) >> "$canal"
+}
+
+# Envoie un message indiquant ce que fait l’utilisateur
+me() {
+	messageBrut "***** $_d_pseudo`pseudo`$_d_message $1"
+}
+
+# Envoie un message normal ayant comme contenu le premier argument
+message() {
+	messageBrut "$_d_pseudo`pseudo` —$_d_message $1"
+}
+
+########## Gestion de la connexion ##########
+
+# Connecte l’utilisateur au canal demandé.
+# Stoppe l’exécution si l’utilisateur est déjà connecté au canal demandé
+# Sinon, envoie un message sur le canal pour signaler l’arrivée de l’utilisateur
+connexion() {
+	if grep -xF "$canal" "$HOME/online.cat" >> "$_journal" 2>&1
+	then
+		echo $_ui_defaut"Vous semblez déjà connecté !";
+		echo "Si ce n’est pas le cas, supprimez la ligne $_ui_brut$canal$_ui_defaut du fichier $_ui_fichier$HOME/online.cat$_ui_defaut";
+		exit 1
+	else
+		echo "$canal" >> "$HOME/online.cat"
+		chmod g+r "$HOME/online.cat" 2>> "$_journal"
+		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique arrive parmi nous"
+	fi
+}
+
+# Déconnecte l’utilisateur du canal courant
+# Envoie un message sur le canal pour signaler le départ de l’utilisateur
+# Si un premier argument est fourni, il est ajouté au message.
+deconnexion() {
+	if [ "$1" != "" ]
+	then
+		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique quitte la conversation ($_d_message$1$_d_messageAutomatique)"
+	else
+		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique quitte la conversation"
+	fi
+	
+	grep -vxF "$canal" "$HOME/online.cat" > "/tmp/online.$$"
+	cat "/tmp/online.$$" > "$HOME/online.cat"
+	rm "/tmp/online.$$"
+	
+	if [ `wc -l "$HOME/online.cat" | cut -d' ' -f 1` = 0 ]
+	then
+		rm  "$HOME/online.cat"
+	fi
+}
+
+########## Contrôle de l’exécution ##########
+
+# Termine tous les sous-programmes
+tuerJobs() {
+	for job in `jobs | sed 's/^.*\[//' | sed 's/\].*$//'`
+	do
+		kill -term %$job
+	done
+}
+
+# Quitte le script
+quitter() {
+	deconnexion "$1"
+	tuerJobs
+	echo "À bientôt $_ui_pseudo`pseudo`$_ui_defaut !"$_raz
+	exit 0
+}
+
+########## Contrôle du canal ##########
+
+# Créer le canal si nécessaire
+# Définit les droits pour que le groupe puisse lire le fichier
+# Demande le sujet si besoin
+creerCanal() {
+	if ! [ -f "$canal" ]
+	then
+		touch "$canal"
+		chmod a+rw "$canal"
+	fi
+	
+	if $_sujet && ! [ -f "$sujet" ]
+	then
+		echo $_ui_defaut"Ce canal n’a pas de sujet, lequel voulez-vous ?"
+		chaineNonNulle >> "$sujet"
+		chmod a+rw "$sujet"
+	fi
+}
+
+# Afficher ou modifier (si $1 est défini) le sujet de la discussion 
+sujet() {
+	if $_sujet
+	then
+		if [ "$1" = '' ]
+		then
+			afficherSujet
+		else
+			definirSujet "$1"
+		fi
+	else
+		desactive
+	fi
+}
+
+# Rappeler le sujet de la discussion
+afficherSujet() {
+	tail -n 1 "$sujet"
+}
+
+# Afficher tous les sujets ayant été définis pour la conversation courante
+sujets() {
+	if $_sujet
+	then
+		cat "$sujet" | $_more
+	else
+		desactive
+	fi
+}
+
+# Changer le sujet de la conversation
+definirSujet() {
+	echo "$1" >> "$sujet"
+	messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique a changé le sujet de la discussion"
+	echo "$_d_normal---- $1 ----$_d_normal" >> "$canal"
+}
+
+########## Liste des utilisateurs ##########
+
+# Liste les utilisateurs du chat
+# premier argument : -t (tous les utilisateurs ayant un pseudo)
+#                    -c (tous les utilisateurs en ligne)
+#                    -d (tous les utilisateurs dans cette discussion) [defaut]
+listerUtilisateurs() {
+	if [ "$1" != -t ] && [ "$1" != -c ]
+	then
+		option='-d'
+	else
+		option=$1
+	fi
+	
+	(
+		case $option in
+			-t) echo $_ui_titre'Tous les utilisateurs'$_ui_defaut;;
+			-c) echo $_ui_titre'Tous les utilisateurs connectés'$_ui_defaut;;
+			-d) echo $_ui_titre'Tous les utilisateurs de ce canal'$_ui_defaut
+		esac
+		
+		echo "$_ui_ligne-------------+---------------------$_ui_defaut"
+		echo " Utilisateur$_ui_ligne |$_ui_defaut Pseudo"
+		echo "$_ui_ligne-------------+---------------------$_ui_defaut"
+		liste=`ls "$HOME"/../*/pseudo.cat`
+		for fichier in $liste
+		do
+			dossier=`dirname $fichier`
+			if [ -f "$dossier/pseudo.cat" ] &&
+				( [ $option = -t ] ||
+					( [ -f "$dossier/online.cat" ] &&
+						( [ $option = -c ] || grep -xF "$canal" "$dossier/online.cat" )
+					)
+				) >> "$_journal" 2>&1
+			then
+				utilisateur=`basename $dossier`
+				if ! pu=`cat "$dossier/pseudo.cat"`
+				then
+					pu='[accès interdit]'
+				fi
+				pu=`echo "$pu"` # Pas de mise en forme bizarre
+				printf $_ui_brut'%12s'$_ui_ligne' | '$_ui_pseudo'%-20s'$_ui_defaut'\n' \
+					"$utilisateur" \
+					"$pu"
+			fi
+		done
+	) 2>> "$_journal" | $_more
+}
+
+########## Aide ##########
+# Optimisé pour un affichage de 74 caractères de large (ne cherchez pas à comprendre)
+
+# Créer un fichier de configuration personnalisée
+aideConfiguration() {
+	echo "Pour configurer l’interface, créez le fichier $_ui_fichier$HOME/.chat.conf$_ui_defaut."
+	echo "Vous pouvez y modifier toutes les variables définies et documentées dans"
+	echo "$_ui_fichier$IP/config$_ui_defaut."
+	echo
+	echo "Vous pouvez avoir besoin d’insérer dans votre $_ui_fichier.bashrc$_ui_defaut ou équivalent la"
+	echo "ligne suivante :"
+	echo $_ui_brut"LANG='FR_fr.UTF8'"$_ui_defaut
+}
+
+# Documentation du protocole utilisé
+aideProtocole() {
+	echo "Ce script utilise un dérivé du protocole proposé en TP de système,"
+	echo "compatible avec celui-ci."
+	echo
+	echo "Un fichier $_ui_fichier\$HOME/pseudo.cat$_ui_defaut, contient le pseudo de l’utilisateur ; sa"
+	echo "présence signale l’existance d’un utilisateur. Ce fichier doit être au"
+	echo "moins accessible (tous les dossiers parents doivent pouvoir être"
+	echo "traversés)."
+	echo
+	echo "Un fichier $_ui_fichier\$HOME/online.cat$_ui_defaut indique qu’un utilisateur est connecté ;"
+	echo "celui-ci contient la liste des canaux (sous la forme du nom du fichier"
+	echo "d’échange) que l’utilisateur écoute. Il est supprimé lorsque l’utilisateur"
+	echo "quitte toutes ses discussions."
+	echo
+	echo "Les fichiers d’échange sont situés dans le dossier $_ui_fichier/tmp$_ui_defaut (configurable) et"
+	echo "sont de la forme "$_ui_fichier"nomCanal.cat$_ui_defaut. Ils contiennent toute la conversation."
+}
+
+# Documentation de la commande /users
+aideUtilisateur() {
+	echo "Il est possible d’accéder à trois listes d’utilisateurs différentes."
+	echo
+	echo "$_ui_commande/utilisateurs $_ui_argument-a$_ui_defaut     Liste tous les utilisateurs ayant défini un pseudo"
+	echo "                     (i.e. ayant un fichier "$_ui_fichier"pseudo.cat$_ui_defaut)."
+	echo
+	echo "$_ui_commande/utilisateurs $_ui_argument-o$_ui_defaut     Liste tous les utilisateurs actuellement connectés à"
+	echo "                     au moins une discussion (i.e. ayant un fichier "$_ui_fichier"online.cat$_ui_defaut)."
+	echo
+	echo "$_ui_commande/utilisateurs $_ui_defaut[$_ui_argument-c$_ui_defaut]   Liste tous les utilisateurs connectés au même canal de"
+	echo "              discussion que vous. Ce mode ne listera que les utilisateurs"
+	echo "              utilisant le même protocole (voir $_violet/aide$_ui_argument protocole$_ui_defaut)"
+}
+
+# Documentation de la commande /wait
+aideAttente() {
+	echo "La commande $_ui_commande/attendre$_ui_defaut permet d’attendre des utilisateurs."
+	echo
+	echo "$_ui_commande/attendre $_ui_argument…$_ui_defaut     Attend que les utilisateurs listés se connectent au même"
+	echo "                canal"
+	echo
+	echo "$_ui_commande/attendre -c $_ui_argument…$_ui_defaut  Attend que les utilisateurs listés se connectent (pas"
+	echo "                forcément au même canal)"
+	echo
+	echo "Les utilisateurs sont salués sur le canal courant lorsqu’ils arrivent et"
+	echo "l’arrivée est signalée dans l’interface de contrôle."
+}
+
+# Liste des commandes disponibles
+aideCommandes() {
+	echo $_ui_titre'Commandes disponibles'$_ui_defaut
+	echo $_ui_ligne'---------------------'$_ui_defaut
+	echo "$_ui_commande/aide$_ui_defaut $_ui_argument…$_ui_defaut               Afficher cette aide"
+	echo "$_ui_commande/clr$_ui_defaut                  Vider l’écran de commande"
+	echo "$_ui_commande/café$_ui_defaut                 Faire le café"
+	echo "$_ui_commande/license$_ui_defaut [$_ui_argument-f$_ui_defaut]         Afficher la licence"
+	echo "$_ui_commande/me$_ui_defaut $_ui_argument…$_ui_defaut                 Indiquer ce que vous faites"
+	echo "$_ui_commande/pseudo$_ui_defaut $_ui_argument…$_ui_defaut             Changer votre pseudo"
+	echo "$_ui_commande/quitter$_ui_defaut $_ui_argument…$_ui_defaut            Quitter la discussion"
+	echo "$_ui_commande/tirer$_ui_defaut                Tirer un nombre aléatoire"
+	
+	if $_sujet
+	then
+		echo "$_ui_commande/sujet$_ui_defaut [$_ui_argument…$_ui_defaut]            Afficher ou modifier le sujet de la conversation"
+		echo "$_ui_commande/sujets$_ui_defaut               Afficher l’historique des sujets"
+	fi
+	
+	echo "$_ui_commande/utilisateurs$_ui_defaut [$_ui_argument-tcd$_ui_defaut]  Lister tous les utilisateurs (cf $_ui_commande/aide$_ui_argument users$_ui_defaut)"
+	echo "$_ui_commande/attendre$_ui_defaut [$_ui_argument-c$_ui_defaut] $_ui_argument…$_ui_defaut      Signaler lorsque des utilisateurs arrivent et les"
+	echo "                      saluer"
+}
+
+licence() {
+	if [ "$1" = "-c" ]
+	then
+		if [ -f "$IP/LICENCE" ]
+		then
+			echo $_ui_titre'Texte de la licence'$_ui_defaut
+			echo $_ui_ligne'-------------------'$_ui_defaut
+			cat "$IP/LICENCE"
+		else
+			echo "La licence est introuvable, consultez la WTFPL en ligne :"
+			echo $_ui_url"http://www.wtfpl.net/$_ui_defaut"
+		fi
+	else
+		echo $_ui_titre'Notice légale'$_ui_defaut
+		echo $_ui_ligne'-------------'$_ui_defaut
+		echo "Lucien Guimier, 2014"
+		echo
+		echo "Ce programme est un logiciel libre ; vous pouvez le redistribuer"
+		echo "ou le modifier suivant les termes de la$_ui_important WTFPL, version 2$_ui_defaut, telle"
+		echo "que publiée par Sam Hocevar."
+		echo
+		echo "Ce programme est distribué dans l’espoir qu’il sera utile, mais"
+		echo $_ui_important"sans aucune garantie$_ui_defaut, dans la limite de ce qui est autorisé par"
+		echo "la loi. Il n’y a en particulier aucune garantie tacite de"
+		echo $_ui_important"qualité marchande$_ui_defaut ou d’"$_ui_important"adéquation à un but particulier$_ui_defaut."
+		echo
+		echo "Vous pouvez consulter le texte complet de la license en exécutant la"
+		echo "commande $_ui_commande/licence $_ui_argument-c$_ui_defaut"
+	fi
+}
+
+# Liste des aides disponibles
+aideGenerale() {
+	echo "Format : $_ui_commande/aide $_ui_defaut["$_ui_argument"mot-clé$_ui_defaut]"
+	echo
+	echo "Mots-clé disponibles :"
+	echo " — "$_ui_argument"attendre$_ui_defaut      Précisions sur l’attente d’utilisateurs"
+	echo " — "$_ui_argument"commandes$_ui_defaut     Liste les commandes disponibles"
+	echo " — "$_ui_argument"configuration$_ui_defaut Décrit la méthode de configuration de l’interface"
+	echo " — "$_ui_argument"protocole$_ui_defaut     Description du protocole utilisé pour la discussion"
+	echo " — "$_ui_argument"utilisateurs$_ui_defaut  Précisions sur l’utilisation des listes d’utilisateurs"
+}
+
+# Gestion de l’aide
+aide() {
+	case "$1" in
+		commandes)
+			aideCommandes;;
+		config|configuration)
+			aideConfiguration;;
+		licence)
+			aideLicence;;
+		protocole)
+			aideProtocole;;
+		utilisateurs|users)
+			aideUtilisateur;;
+		attendre)
+			aideAttente;;
+		*)
+			aideGenerale
+	esac
+}
+
+########## Interface de contrôle ##########
+
+# Indiquer qu’une fonctionnalité est désactivée
+desactive() {
+	echo $_ui_erreur"Cette fonctionnalité est désactivée"$_ui_normal
+}
+
+# Affiche le début du prompt
+ligneEntree() {
+	echo -n "$_ui_prompt $_ui_promptContenu"
+}
+
+# Exécute une commande à partir de son nom (premier argument)
+# et de la liste de ses arguments (second argument)
+# Quelques commandes en anglais (non documentées) sont conservées pour
+# leur concision
+executerCommande() {
+	case $1 in
+		aide)
+			aide "$2" | $_more;;
+		attendre|wait)
+			"$IP/attendre" "$discussion" $2 & ;;
+		clr)
+			( which clear >> "$_journal" ) && clear;;
+		koffie|qæhvæ|قهوة|akeita|koffee|kahva|kafe|café|咖啡|kava|káva|kaffe|coffee|kafo|kohv|kahvi|Kaffee|καφέ|कौफी|コーヒー|커피|кофе|กาแฟ)
+			cafe "$1";;
+		licence)
+			licence "$2" | $_more;;
+		me)
+			me "$2";;
+		pseudo)
+			definirPseudo "$2";;
+		quitter|quit)
+			quitter "$2";;
+		sujet)
+			sujet "$2";;
+		sujets)
+			sujets;;
+		aleatoire|tirer)
+			tirage;;
+		utilisateurs|users)
+			listerUtilisateurs "$2";;
+		*)
+			echo $_ui_erreur"Commande inconnue « $_ui_brut$1$_ui_erreur »$_ui_normal"
+	esac
+}
+
+# Attend les instruction de l’utilisateur et les applique
+executerCommandes() {
+	ligneEntree
+	while read ligne
+	do
+		echo -n $_ui_defaut
+		if ! [ "$ligne" = '' ]
+		then
+			premier=`echo "$ligne" | cut -c 1`
+			if [ "$premier" = / ]
+			then
+				commande=`echo $ligne | cut -d' ' -f 1 | cut -c 1 --complement`
+				arguments=`echo $ligne | cut -d' ' -f 1 --complement`
+				if [ "$arguments" = "$ligne" ]
+				then
+					arguments=''
+				fi
+				executerCommande "$commande" "$arguments"
+					
+			else
+				message "$ligne"
+			fi
+		fi
+		titreFenetreConverser
+		ligneEntree
+	done
+}
+
+########## Démarrage ##########
+
+##### Nom du canal (premier argument) #####
+
+# Vérification de la présence
+if [ $# -lt 1 ]
+then
+	echo $_ui_erreur"Le premier argument doit indiquer le canal de discussion"$_normal
+	exit 1
+fi
+
+# Mise à disposition des scripts
+discussion="$1"
+canal="$_dossier/$1.cat"
+sujet="$_dossier/$1.suj"
+
+##### Pseudo de l’utilisateur #####
+
+# Définition si absent
+if [ ! -f "$HOME/pseudo.cat" ]
+then
+	echo 'Vous n’avez pas de pseudo, veuillez en définir un'
+	while [ "$pseudo" == "" ]
+	do
+		read pseudo
+	done
+	definirPseudo $pseudo
+fi
+
+# Le pseudo doit être accessible depuis l’extérieur (au moins pour le groupe)
+(
+	chmod g+x "$HOME"
+	chmod g+r "$HOME/pseudo.cat"
+) 2>> "$_journal"

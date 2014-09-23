@@ -1,0 +1,58 @@
+#!/bin/bash
+# Chat simple — Définitions des couleurs
+# Lucien Guimier, 2014
+#
+# Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le
+# modifier suivant les termes de la WTFPL, version 2, telle que publiée
+# par Sam Hocevar.
+#
+# Ce programme est distribué dans l’espoir qu’il sera utile, mais SANS
+# AUCUNE GARANTIE, dans la limite de ce qui est autorisé par la loi. Il
+# n’y a en particulier aucune garantie tacite de QUALITÉ MARCHANDE ou
+# d’ADÉQUATION À UN BUT PARTICULIER.
+#
+# Vous devez avoir reçu une copie de la WTFPL en même temps que ce
+# programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
+
+# Protection contre l’inclusion
+[ "${#BASH_SOURCE[@]}" -gt 1 ] || {
+	echo "Tentative d’exécution directe d’une bibliothèque"
+	exit 1;
+}
+
+##########
+# Les noms correspondent à la palette la plus commune, mais cette association
+# peut varier d’un système à l’autre.
+
+_normal=`echo -ne '\e[0m'`
+_gras=`echo -ne '\e[1m'`
+
+_noir=`echo -ne '\e[0;30m'` # invisible
+_noirGras=`echo -ne '\e[1;30m'` # gris peu visible
+
+_rouge=`echo -ne '\e[0;31m'`
+_rougeGras=`echo -ne '\e[1;31m'`
+
+_vert=`echo -ne '\e[0;32m'`
+_vertGras=`echo -ne '\e[1;32m'`
+
+_jaune=`echo -ne '\e[0;33m'`
+_jauneGras=`echo -ne '\e[1;33m'`
+
+_bleu=`echo -ne '\e[0;34m'`
+_bleuGras=`echo -ne '\e[1;34m'`
+
+_violet=`echo -ne '\e[0;35m'`
+_violetGras=`echo -ne '\e[1;35m'`
+
+_turquoise=`echo -ne '\e[0;36m'`
+_turquoiseGras=`echo -ne '\e[1;36m'`
+
+_gris1=`echo -ne '\e[0;37m'`
+_gris1Gras=`echo -ne '\e[1;37m'`
+
+_gris2=`echo -ne '\e[0;38m'`
+_gris2Gras=`echo -ne '\e[1;38m'`
+
+_blanc=`echo -ne '\e[0;38m'`
+_blancGras=`echo -ne '\e[1;38m'`

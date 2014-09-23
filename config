@@ -1,0 +1,121 @@
+#!/bin/bash
+# Chat simple — Configuration
+# Lucien Guimier, 2014
+#
+# Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le
+# modifier suivant les termes de la WTFPL, version 2, telle que publiée
+# par Sam Hocevar.
+#
+# Ce programme est distribué dans l’espoir qu’il sera utile, mais SANS
+# AUCUNE GARANTIE, dans la limite de ce qui est autorisé par la loi. Il
+# n’y a en particulier aucune garantie tacite de QUALITÉ MARCHANDE ou
+# d’ADÉQUATION À UN BUT PARTICULIER.
+#
+# Vous devez avoir reçu une copie de la WTFPL en même temps que ce
+# programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
+
+# Protection contre l’inclusion
+[ "${#BASH_SOURCE[@]}" -gt 1 ] || {
+	echo "Tentative d’exécution directe d’une bibliothèque"
+	exit 1;
+}
+
+##########
+# Ce fichier contient l’initialisation des variables de configuration.
+# Chaque utilisateur peut écraser ces valeurs en créant un fichier ~/.chat.conf
+# contenant des déclaration similaires.
+
+##########
+# Les variables [string] peuvent contenir n’importe quoi
+# Les variables [file] peuvent contenir des noms de fichier ou de répertoires
+# Les variables [int] peuvent être des entiers (en décimal)
+# les variables [prgm] peuvent contenir le nom d’un exécutable dans le $PATH
+# Les variables [boolean] peuvent contenir les chaînes 'true' et 'false' (il s’agit d’un type particulier de [prgm])
+# Les variables [color] peuvent contenir des séquences de contrôle du terminal non imprimables
+
+########## Configuration générale ##########
+
+# [file] Dossier dans lequel sont stockées les discussions
+_dossier="/tmp"
+
+# [file] Fichier où rediriger les sorties non affichées
+_journal=/dev/null
+
+# [boolean] Effacer l’écran lors de la connexion
+_nettoyer=false
+
+# [boolean] Activer les sujets
+_sujet=false
+
+# [prgm] Outil de visualisation de grands rapports (cat 'fichier à afficher' | $_more)
+# exemples : 'more'
+#            'less --RAW-CONTROL-CHARS'
+#            'cat' (déconseillé)
+_more='less --RAW-CONTROL-CHARS'
+
+# [int] Nombre de lignes à afficher au démarrage
+_precedentes=10
+
+########## Couleurs & graisse ##########
+
+##### Interface #####
+
+# [color] Apparence de base
+_ui_defaut=$_normal
+
+# [color] Titres
+_ui_titre=$_gras
+
+# [color] Lignes (sous les titres, tableaux)
+_ui_ligne=$_noirGras
+
+# [color] Code brut
+_ui_brut=$_bleuGras
+
+# [color] URL
+_ui_url=$_bleuGras
+
+# [color] Noms de fichiers
+_ui_fichier=$_bleuGras
+
+# [color+string] Début du prompt
+_ui_prompt="$_jauneGras>"
+
+# [color] Contenu du prompt
+_ui_promptContenu=$_normal
+
+# [color] Pseudo
+_ui_pseudo=$_jauneGras
+
+# [color] Discussion
+_ui_discussion=$_rougeGras
+
+# [color] Commandes
+_ui_commande=$_violetGras
+
+# [color] Arguments des commandes
+_ui_argument=$_bleuGras
+
+# [color] Messages d’erreur
+_ui_erreur=$_rougeGras
+
+# [color] Mots importants
+_ui_important=$_rougeGras
+
+##### Discussion #####
+
+# [color] Apparence de base
+_d_defaut=$_normal
+
+# [color] Date
+_d_date=$_normal$_gras
+
+# [color] Messages (hors contenu particulier)
+_d_message=$_normal
+
+# [color] Messages automatiques (connexion, déconnexion, etc.)
+_d_messageAutomatique=$_bleu
+
+# [color] Pseudo
+_d_pseudo=$_jauneGras
+

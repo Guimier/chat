@@ -1,0 +1,50 @@
+#!/bin/bash
+# Chat simple — Utilitaire de discussion
+# Lucien Guimier, 2014
+#
+# Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le
+# modifier suivant les termes de la WTFPL, version 2, telle que publiée
+# par Sam Hocevar.
+#
+# Ce programme est distribué dans l’espoir qu’il sera utile, mais SANS
+# AUCUNE GARANTIE, dans la limite de ce qui est autorisé par la loi. Il
+# n’y a en particulier aucune garantie tacite de QUALITÉ MARCHANDE ou
+# d’ADÉQUATION À UN BUT PARTICULIER.
+#
+# Vous devez avoir reçu une copie de la WTFPL en même temps que ce
+# programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
+
+IP="$( dirname "$( readlink --canonicalize "$0" )" )"
+source "$IP/lib"
+
+# Un seul paramètre
+if [ $# -gt 1 ]
+then
+	echo $_ui_erreur'Trop de paramètres'
+	echo 'Utilisez `$ attendre $canal`'$_normal
+	exit 1
+fi
+
+# Connexion au canal
+connexion
+
+# Lecture du canal dans une seconde fenêtre
+creerCanal
+gnome-terminal --disable-factory --title="$discussion" -x "$IP/lecture" "$discussion" 2>> "$_journal" &
+
+# Avertissement des changement de pseudo
+"$IP/pseudo" "$discussion" >> "$_journal" 2>&1 &
+
+# Une interface nettoyée
+$_nettoyer && ( which clear >> "$_journal" ) && clear
+
+# Message d’accueil
+echo $_ui_defaut"Bienvenue sur la discussion $_ui_discussion$1$_ui_defaut, $_ui_pseudo`pseudo`$_ui_defaut"
+echo "Tapez $_ui_commande/aide$_ui_defaut pour obtenir de l’aide sur les commandes"
+echo "Bonne discussion !"
+
+# Définission du titre de la fenêtre
+titreFenetreConverser
+
+# Boucle principale
+executerCommandes

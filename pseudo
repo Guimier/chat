@@ -1,0 +1,30 @@
+#!/bin/bash
+# Chat simple — Surveillance du pseudo
+# Lucien Guimier, 2014
+#
+# Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le
+# modifier suivant les termes de la WTFPL, version 2, telle que publiée
+# par Sam Hocevar.
+#
+# Ce programme est distribué dans l’espoir qu’il sera utile, mais SANS
+# AUCUNE GARANTIE, dans la limite de ce qui est autorisé par la loi. Il
+# n’y a en particulier aucune garantie tacite de QUALITÉ MARCHANDE ou
+# d’ADÉQUATION À UN BUT PARTICULIER.
+#
+# Vous devez avoir reçu une copie de la WTFPL en même temps que ce
+# programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
+
+IP="$( dirname "$( readlink --canonicalize "$0" )" )"
+source "$IP/lib"
+
+pseudo=`pseudo`
+
+while true
+do
+	if [ "$pseudo" != "`pseudo`" ]
+	then
+		messageBrut "$_d_pseudo$pseudo$_d_messageAutomatique s’appelle désormais $_d_pseudo`pseudo`$_d_messageAutomatique"
+		pseudo=`pseudo`
+	fi
+	sleep 1
+done
