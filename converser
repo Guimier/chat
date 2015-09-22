@@ -46,13 +46,5 @@ echo "Bonne discussion !"
 # Définission du titre de la fenêtre
 titreFenetreConverser
 
-signaled() {
-	echo
-	echo "Quitté via un signal"
-	quitter "ne connaît pas $_ui_commande/quit$_d_defaut"
-}
-
-trap 'signaled' SIGINT
-
 # Boucle principale
 executerCommandes

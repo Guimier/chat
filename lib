@@ -500,6 +500,14 @@ executerCommande() {
 	esac
 }
 
+signaled() {
+	echo
+	echo "Quitté via un signal"
+	quitter "ne connaît pas $_ui_commande/quit$_d_defaut"
+}
+
+trap 'signaled' SIGINT # Ctrl-C
+
 # Attend les instruction de l’utilisateur et les applique
 executerCommandes() {
 	ligneEntree
@@ -526,6 +534,8 @@ executerCommandes() {
 		titreFenetreConverser
 		ligneEntree
 	done
+	
+	signaled # Ctrl-D
 }
 
 ########## Démarrage ##########
