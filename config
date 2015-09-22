@@ -56,6 +56,15 @@ _more='less --RAW-CONTROL-CHARS'
 # [int] Nombre de lignes à afficher au démarrage
 _precedentes=10
 
+# Citations
+declare -A _citations=(
+	['conscience']="$( formaterCitation 'Science sans conscience n’est que ruine de l’âme' 'François Rabelais' )"
+	['dés']="$( formaterCitation 'Dieu ne joue pas aux dés' 'Albert Einstein' )"
+	['rangs']="$( formaterCitation 'Ceux qui aiment marcher en rangs sur une musique : ce ne peut être que par erreur qu’ils ont reçu un cerveau, une moelle épinière leur suffirait amplement' 'Albert Einstein' )"
+	['divinité']="$( formaterCitation 'Seuls l’art et la science élèvent l’homme jusqu’à la divinité' 'Ludwig van Beethoven' )"
+	['soupe']="$( formaterCitation 'Seuls les cœurs purs font de la bonne soupe' 'Ludwig van Beethoven' )"
+)
+
 ########## Couleurs & graisse ##########
 
 ##### Interface #####

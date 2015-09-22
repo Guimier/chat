@@ -23,6 +23,20 @@
 # Chargement des couleurs pouvant être utilisées pour la configuration
 source "$IP/couleurs"
 
+# Formatage des citations
+# $ formaterCitation $citation [$auteur]
+formaterCitation() {
+	local auteur
+	if [ $# -gt 1 ]
+	then
+		auteur="$2"
+	else
+		auteur='Anonyme'
+	fi
+	
+	printf '« %s » — %s' "$1" "$auteur"
+}
+
 # Chargement de la configuration par défaut
 source "$IP/config"
 
@@ -55,6 +69,26 @@ cafe() {
 		2)         message "$_d_messageAutomatique$1://172.17.255.42 Erreur 418";;
 		3)         me $_d_messageAutomatique'a oublié que l’excès de café nuit au sommeil';;
 	esac
+}
+
+citer() {
+	local q
+	
+	if [ -n "$1" ]
+	then
+		q="${_citations[$1]}"
+	else
+		local -a qs=( "${_citations[@]}" )
+		local -i i=$( aleatoire ${#qs[@]} )
+		q="${qs[$i]}"
+	fi
+	
+	if [ -n "$q" ]
+	then
+		messageBrut "$_d_pseudo`pseudo` :$_d_message $q"
+	else
+		echo "Citation inexistante"
+	fi
 }
 
 ########## Entrée utilisateur ##########
@@ -378,6 +412,7 @@ aideCommandes() {
 	echo "$_ui_commande/pseudo$_ui_defaut $_ui_argument…$_ui_defaut             Changer votre pseudo"
 	echo "$_ui_commande/quitter$_ui_defaut $_ui_argument…$_ui_defaut            Quitter la discussion"
 	echo "$_ui_commande/tirer$_ui_defaut                Tirer un nombre aléatoire"
+	echo "$_ui_commande/citer$_ui_defaut                Citer un grand auteur"
 	
 	if $_sujet
 	then
@@ -477,6 +512,8 @@ executerCommande() {
 			"$IP/attendre" "$discussion" $2 & ;;
 		clr|clear)
 			( which clear >> "$_journal" ) && clear;;
+		citer)
+			citer "$2";;
 		koffie|qæhvæ|قهوة|akeita|koffee|kahva|kafe|café|咖啡|kava|káva|kaffe|coffee|kafo|kohv|kahvi|Kaffee|καφέ|कौफी|コーヒー|커피|кофе|กาแฟ)
 			cafe "$1";;
 		licence)
