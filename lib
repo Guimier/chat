@@ -49,10 +49,11 @@ tirage() {
 # Fait le café (ou pas)
 # Premier argument : commande initiale
 cafe() {
-	case `aleatoire 3` in
+	case `aleatoire 4` in
 		0)         me $_d_messageAutomatique'doit changer le filtre de la cafetière';;
 		1)         me $_d_messageAutomatique'a oublié de racheter du café';;
-		2)         message "$_d_messageAutomatique$1://172.17.255.42 Erreur 418"
+		2)         message "$_d_messageAutomatique$1://172.17.255.42 Erreur 418";;
+		3)         me $_d_messageAutomatique'a oublié que l’excès de café nuit au sommeil';;
 	esac
 }
 
@@ -146,6 +147,12 @@ connexion() {
 		echo "Si ce n’est pas le cas, supprimez la ligne $_ui_brut$canal$_ui_defaut du fichier $_ui_fichier$HOME/online.cat$_ui_defaut";
 		exit 1
 	else
+		if ! [ -f "$canal" ] 
+		then
+			touch "$canal"
+			chmod go+rw "$canal"
+		fi
+		
 		echo "$canal" >> "$HOME/online.cat"
 		chmod g+r "$HOME/online.cat" 2>> "$_journal"
 		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique arrive parmi nous"
@@ -366,7 +373,7 @@ aideCommandes() {
 	echo "$_ui_commande/aide$_ui_defaut $_ui_argument…$_ui_defaut               Afficher cette aide"
 	echo "$_ui_commande/clr$_ui_defaut                  Vider l’écran de commande"
 	echo "$_ui_commande/café$_ui_defaut                 Faire le café"
-	echo "$_ui_commande/license$_ui_defaut [$_ui_argument-f$_ui_defaut]         Afficher la licence"
+	echo "$_ui_commande/licence$_ui_defaut [$_ui_argument-f$_ui_defaut]         Afficher la licence"
 	echo "$_ui_commande/me$_ui_defaut $_ui_argument…$_ui_defaut                 Indiquer ce que vous faites"
 	echo "$_ui_commande/pseudo$_ui_defaut $_ui_argument…$_ui_defaut             Changer votre pseudo"
 	echo "$_ui_commande/quitter$_ui_defaut $_ui_argument…$_ui_defaut            Quitter la discussion"
@@ -433,7 +440,7 @@ aide() {
 			aideCommandes;;
 		config|configuration)
 			aideConfiguration;;
-		licence)
+		licence|license)
 			aideLicence;;
 		protocole)
 			aideProtocole;;
@@ -464,11 +471,11 @@ ligneEntree() {
 # leur concision
 executerCommande() {
 	case $1 in
-		aide)
+		aide|help)
 			aide "$2" | $_more;;
 		attendre|wait)
 			"$IP/attendre" "$discussion" $2 & ;;
-		clr)
+		clr|clear)
 			( which clear >> "$_journal" ) && clear;;
 		koffie|qæhvæ|قهوة|akeita|koffee|kahva|kafe|café|咖啡|kava|káva|kaffe|coffee|kafo|kohv|kahvi|Kaffee|καφέ|कौफी|コーヒー|커피|кофе|กาแฟ)
 			cafe "$1";;
@@ -476,7 +483,7 @@ executerCommande() {
 			licence "$2" | $_more;;
 		me)
 			me "$2";;
-		pseudo)
+		pseudo|name)
 			definirPseudo "$2";;
 		quitter|quit)
 			quitter "$2";;
