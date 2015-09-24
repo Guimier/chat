@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/false bash
 # Chat simple — Fonctions communes
 # Lucien Guimier, 2014
 #
@@ -13,12 +13,6 @@
 #
 # Vous devez avoir reçu une copie de la WTFPL en même temps que ce
 # programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
-
-# Protection contre l’inclusion
-[ "${#BASH_SOURCE[@]}" -gt 1 ] || {
-	echo "Tentative d’exécution directe d’une bibliothèque"
-	exit 1;
-}
 
 # Chargement des couleurs pouvant être utilisées pour la configuration
 source "$IP/couleurs"
