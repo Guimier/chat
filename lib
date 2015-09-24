@@ -371,6 +371,46 @@ aideProtocole() {
 	echo "sont de la forme "$_ui_fichier"nomCanal.cat$_ui_defaut. Ils contiennent toute la conversation."
 }
 
+espaces() {
+	for j in $( seq 0 "$1" )
+	do
+		printf ' '
+	done
+}
+
+# Citations disponibles
+aideCitations() {
+	local i
+	local -ri len=16
+	local -ri rlen=$(( len - 1 ))
+	local -ri width="$( tput cols )"
+	local -ri clen=$(( width - len - 1 ))
+	local txt
+	local indent="$( espaces $(( len )) )"
+	
+	for i in "${!_citations[@]}"
+	do
+		if [ "${#i}" -gt $len ]
+		then
+			printf "$_ui_argument%s…$_ui_defaut" "${i:0:$rlen}"
+		else
+			printf "$_ui_argument%s$_ui_defaut" "$i"
+			espaces $(( rlen - ${#i} ))
+		fi
+		
+		printf ' '
+		
+		txt="${_citations[$i]}"
+		printf '%s\n' "${txt:0:$clen}"
+		
+		while [ "${#txt}" -gt "$clen" ]
+		do
+			txt="${txt:$clen}"
+			printf '%s%s\n' "$indent" "${txt:0:$clen}"
+		done
+	done
+}
+
 # Documentation de la commande /users
 aideUtilisateur() {
 	echo "Il est possible d’accéder à trois listes d’utilisateurs différentes."
@@ -466,6 +506,7 @@ aideGenerale() {
 	echo " — "$_ui_argument"configuration$_ui_defaut Décrit la méthode de configuration de l’interface"
 	echo " — "$_ui_argument"protocole$_ui_defaut     Description du protocole utilisé pour la discussion"
 	echo " — "$_ui_argument"utilisateurs$_ui_defaut  Précisions sur l’utilisation des listes d’utilisateurs"
+	echo " — "$_ui_argument"citations$_ui_defaut     Lister les citations disponibles"
 }
 
 # Gestion de l’aide
@@ -483,6 +524,8 @@ aide() {
 			aideUtilisateur;;
 		attendre)
 			aideAttente;;
+		citations)
+			aideCitations;;
 		*)
 			aideGenerale
 	esac
