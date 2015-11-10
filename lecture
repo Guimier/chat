@@ -23,7 +23,7 @@ source "$IP/lib"
 
 if $_sujet
 then
-	contenuSujet=`tail -n 1 "$sujet"`
+	contenuSujet=$( tail -n 1 "$sujet" )
 	echo $_ui_titre$contenuSujet$_ui_defaut
 	echo $_ui_ligne'------------------------------------------'$_ui_defaut
 fi
@@ -42,3 +42,4 @@ do
 done
 
 tuerJobs
+

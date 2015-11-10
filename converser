@@ -20,8 +20,7 @@ source "$IP/lib"
 # Un seul paramètre
 if [ $# -gt 1 ]
 then
-	echo $_ui_erreur'Trop de paramètres'
-	echo 'Utilisez `$ attendre $canal`'$_normal
+	echo $_ui_erreur"Trop de paramètres, utilisez \`${_ui_commande}attendre $_ui_argument\$canal$_ui_erreur\`.$_normal"
 	exit 1
 fi
 
@@ -39,7 +38,7 @@ gnome-terminal --disable-factory --title="$discussion" -x "$IP/lecture" "$discus
 $_nettoyer && ( which clear >> "$_journal" ) && clear
 
 # Message d’accueil
-echo $_ui_defaut"Bienvenue sur la discussion $_ui_discussion$1$_ui_defaut, $_ui_pseudo`pseudo`$_ui_defaut"
+echo $_ui_defaut"Bienvenue sur la discussion $_ui_discussion$1$_ui_defaut, $_ui_pseudo$(pseudo)$_ui_defaut"
 echo "Tapez $_ui_commande/aide$_ui_defaut pour obtenir de l’aide sur les commandes"
 echo "Bonne discussion !"
 
@@ -48,3 +47,4 @@ titreFenetreConverser
 
 # Boucle principale
 executerCommandes
+

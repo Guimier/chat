@@ -17,14 +17,15 @@
 IP="$( dirname "$( readlink --canonicalize "$0" )" )"
 source "$IP/lib"
 
-pseudo=`pseudo`
+pseudo=$(pseudo)
 
 while true
 do
-	if [ "$pseudo" != "`pseudo`" ]
+	if [ "$pseudo" != "$(pseudo)" ]
 	then
-		messageBrut "$_d_pseudo$pseudo$_d_messageAutomatique s’appelle désormais $_d_pseudo`pseudo`$_d_messageAutomatique"
-		pseudo=`pseudo`
+		messageBrut "$_d_pseudo$pseudo$_d_messageAutomatique s’appelle désormais $_d_pseudo$(pseudo)$_d_messageAutomatique"
+		pseudo=$(pseudo)
 	fi
 	sleep 1
 done
+

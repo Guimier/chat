@@ -1,4 +1,4 @@
-#!/bin/false bash
+#!/bin/bash [sourceonly]
 # Chat simple — Fonctions communes
 # Lucien Guimier, 2014
 #
@@ -14,11 +14,31 @@
 # Vous devez avoir reçu une copie de la WTFPL en même temps que ce
 # programme ; si ce n’est pas le cas, consultez <http://www.wtfpl.net/>.
 
+##### Convention de la documentation des fonctions
+# La dernière ligne, entre accolades, représente la signature.
+# Les entrées et sorties sont représentées par des mots préfixés par `$`:
+#  — les paramètres de la fonction directement après son nom, dans l’ordre :
+#    – entre crochets si facultatifs,
+#    – suivis d’un point d’interrogation si peuvent être vides,
+#    – suivis de `…` si répétables,
+#    – entre crochets si facultatifs ;
+#  — un flux entrant après `<` ;
+#  — les fluc sortants après `>` ou `#>`.
+
+##### Conventions pour les appels
+# Les appels de fonctions utilisent de préférence la syntaxe avec parenthèses $() que celle avec des
+# caractères back quote.
+# Si l’appel est simple (sans arguments, sans pipe), pas d’espace dans les parenthèses.
+# Dans le cas contraire, la parenthèse ouvrante est suivie d’une espace et la fermante précédée
+# d’une autre.
+
+########## Initialisation ##########
+
 # Chargement des couleurs pouvant être utilisées pour la configuration
 source "$IP/couleurs"
 
 # Formatage des citations
-# $ formaterCitation $citation [$auteur]
+#{ formaterCitation $citation [$auteur] > $citationFormatée }
 formaterCitation() {
 	local auteur
 	if [ $# -gt 1 ]
@@ -42,40 +62,57 @@ fi
 
 ########## Découpage ##########
 
+# Fonction retournant son premier argument (strict).
+#{ __firstArg $1 $autres… > $1 }
 __firstArg() {
 	echo $1
 }
 
+# Fonction retournant son premier argument (réinterprétant de la liste d’arguments).
+#{ __firstArg $args… > $premier }
 firstArg() {
 	__firstArg $@
 }
 
+# Fonction retournant tous ses arguments sauf le premier.
+#{ __otherArgs $1 $autres… > $autres }
 __otherArgs() {
 	shift
 	echo $@
 }
 
+# Fonction retournant tous ses arguments sauf le premier (réinterprétant de la liste d’arguments).
+#{ __otherArgs $args… > $autres }
 otherArgs() {
 	__otherArgs $@
 }
 
+########## Message dans l’interface ##########
+
+# Afficher une erreur due à une mauvaise manipulation de l’utilisateur.
+#{ afficherErreur $message 2> $formaté }
+afficherErreur() {
+	echo $_ui_erreur"$1"$_ui_defaut >&2
+}
+
 ########## Aléatoire ##########
 
-# Renvoie un nombre aléatoire entre 0 (inclus) et $1 (exclus)
+# Renvoie un nombre aléatoire entre 0 (inclus) et $1 (exclus).
+#{ aleatoire $max > $randInt }
 aleatoire() {
 	expr "$RANDOM" % "$1" 2>> "$_journal" # TODO Le modulo est Mal™
 }
 
-# Tire un nombre entre 1 et 100 pouis l’affiche
+# Tire un nombre entre 1 et 100 pouis l’affiche.
+#{ tirage }
 tirage() {
-	valeur=`aleatoire 100`
+	local -i valeur=$( aleatoire 100 )
 	let valeur++
-	me "a tiré un $valeur"
+	me $_d_messageAutomatique"a tiré un $valeur"
 }
 
-# Fait le café (ou pas)
-# Premier argument : commande initiale
-# Second argument : paramètres supplémentaires
+# Fait le café (ou pas).
+#{ cafe $motCafe $demande? }
 cafe() {
 	local ch;
 	
@@ -95,6 +132,8 @@ cafe() {
 	esac
 }
 
+# Citer un grand auteur.
+#{ citer $demande? }
 citer() {
 	local q
 	
@@ -109,19 +148,21 @@ citer() {
 	
 	if [ -n "$q" ]
 	then
-		messageBrut "$_d_pseudo`pseudo` :$_d_message $q"
+		messageBrut "$_d_pseudo$(pseudo) :$_d_message $q"
 	else
 		echo "Citation inexistante"
 	fi
 }
 
+# Répondre à un autre utilisateur.
+#{ repondre $pseudo $message }
 repondre() {
 	local psdo=$( firstArg "$1" )
 	local msg=$( otherArgs "$1" )
 	
 	if [ -z "$psdo" ]
 	then
-		echo $_ui_erreur'Sans destination, peu de chance que votre réponse arrive jamais !'$_ui_defaut
+		afficherErreur 'Sans destination, peu de chance que votre réponse arrive jamais !'
 	else
 		if [ -z "$msg" ]
 		then
@@ -134,8 +175,10 @@ repondre() {
 
 ########## Entrée utilisateur ##########
 
-# Lire une chaîne contenant des caractères non blancs
+# Lire une chaîne contenant des caractères non blancs sur le terminal.
+#{ chaineNonNulle < $entreeUtilisateur > $chaîne }
 chaineNonNulle() {
+	local str
 	while ! ( echo "$str" | grep '\S' >> "$_journal" )
 	do
 		read str
@@ -145,7 +188,8 @@ chaineNonNulle() {
 
 ########## Gestion du titre de la fenêtre ##########
 
-# Change le titre de la fenêtre pour la valeur du premier argument
+# Change le titre de la fenêtre.
+#{ titreFenetre $nouveauTitre > $instructionsTerminal }
 titreFenetre() {
 	if [ "$SESSIONTYPE" = "gnome-session" ] # COLORTERM
 	then
@@ -156,81 +200,83 @@ titreFenetre() {
 }
 
 # Met à jour le titre de la fenêtre de contrôle
+#{ titreFenetreConverser }
 titreFenetreConverser() {
 	if $_sujet
 	then
-		titreFenetre "`pseudo` | $USER@$discussion | `afficherSujet`"
+		titreFenetre "$(pseudo) | $USER@$discussion | $(afficherSujet)"
 	else
-		titreFenetre "`pseudo` | $USER@$discussion"
+		titreFenetre "$(pseudo) | $USER@$discussion"
 	fi
 }
 
 ########## Lecture/modification des informations sur les utilisateurs ##########
 
 # Renvoie le dossier /home/ de l’utilisateur passé comme argument
+#{ home $utilisateur > $cheminDossier }
 home() {
-	eval echo -n ~$1
+	eval echo ~$1
 }
 
 # Renvoie le pseudo de l’utilisateur courant
+#{ pseudo > $pseudo }
 pseudo() {
 	cat "$HOME/pseudo.cat"
 }
 
 # Définit le pseudo de l’utilisateur courant pour la valeur donnée en premier paramètre
+#{ definirPseudo $nouveauPseudo 2> $messageErreur }
 definirPseudo() {
 	if echo "$1" | grep '\S' >> "$_journal"
 	then
-		pseudo="$1"
 		echo "$1" > "$HOME/pseudo.cat"
 		chmod g+r "$HOME/pseudo.cat"
 	else
-		echo $_ui_erreur'Il est interdit de définir un pseudo vide'$_ui_defaut
+		afficherErreur 'Il est interdit de définir un pseudo vide'
 	fi
 }
 
 ########## Envoi de messages sur le canal de discussion ##########
 
-# Envoie un message daté ayant comme contenu le premier argument
+# Envoie un message daté.
+#{ messageBrut $message }
 messageBrut() {
-	(
-		echo -n $_d_date`date '+%d/%m/%y %H:%M:%S'`
-		echo $_d_message "$1"
-		echo -n $_d_defaut # Nettoyage couleur éventuelle
-	) >> "$canal"
+	echo $_d_date"$( date '+%d/%m/%y %H:%M:%S' ) $_d_message$1$_d_defaut" >> "$canal"
 }
 
-# Envoie un message indiquant ce que fait l’utilisateur
+# Envoie un message indiquant ce que fait l’utilisateur.
+#{ me $statut? 2> $messageErreur }
 me() {
 	if [ -z "$1" ]
 	then
-		echo $_ui_erreur"Vous devez donner un statut"$_ui_defaut
+		afficherErreur 'Vous devez donner un statut'
 	else
-		messageBrut "***** $_d_pseudo`pseudo`$_d_message $1"
+		messageBrut "***** $_d_pseudo$(pseudo)$_d_message $1"
 	fi
 }
 
-# Envoie un message normal ayant comme contenu le premier argument
+# Envoie un message normal.
+#{ message $message }
 message() {
-	messageBrut "$_d_pseudo`pseudo` —$_d_message $1"
+	messageBrut "$_d_pseudo$(pseudo) —$_d_message $1"
 }
 
-# Réponse à un autre utilisateur
-# Premier argument : nom de l’autre utilisateur
-# Second argument : message
+# Envoyer une réponse à un autre utilisateur.
+#{ reponse $autrePseudo $message }
 reponse() {
-	messageBrut "$_d_pseudo`pseudo` $_d_messageAutomatique@ $_d_pseudo$1 —$_d_message $2"
+	messageBrut "$_d_pseudo$(pseudo) $_d_messageAutomatique@ $_d_pseudo$1 —$_d_message $2"
 }
 
 ########## Gestion de la connexion ##########
 
 # Connecte l’utilisateur au canal demandé.
-# Stoppe l’exécution si l’utilisateur est déjà connecté au canal demandé
-# Sinon, envoie un message sur le canal pour signaler l’arrivée de l’utilisateur
+# Stoppe l’exécution si l’utilisateur est déjà connecté au canal demandé.
+# Sinon, envoie un message sur le canal pour signaler l’arrivée de l’utilisateur.
+#{ connexion > $messageErreur }
 connexion() {
 	if grep -xF "$canal" "$HOME/online.cat" >> "$_journal" 2>&1
 	then
-		echo $_ui_defaut"Vous semblez déjà connecté !";
+		echo $_ui_erreur"Vous semblez déjà connecté !"$_ui_defaut;
 		echo "Si ce n’est pas le cas, supprimez la ligne $_ui_brut$canal$_ui_defaut du fichier $_ui_fichier$HOME/online.cat$_ui_defaut";
 		exit 1
 	else
@@ -242,26 +288,27 @@ connexion() {
 		
 		echo "$canal" >> "$HOME/online.cat"
 		chmod g+r "$HOME/online.cat" 2>> "$_journal"
-		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique arrive parmi nous"
+		messageBrut "$_d_pseudo$(pseudo)$_d_messageAutomatique arrive parmi nous"
 	fi
 }
 
-# Déconnecte l’utilisateur du canal courant
-# Envoie un message sur le canal pour signaler le départ de l’utilisateur
+# Déconnecte l’utilisateur du canal courant.
+# Envoie un message sur le canal pour signaler le départ de l’utilisateur.
 # Si un premier argument est fourni, il est ajouté au message.
+#{ deconnexion [$message] }
 deconnexion() {
-	if [ "$1" != "" ]
+	if [ -n "$1" ]
 	then
-		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique quitte la conversation ($_d_message$1$_d_messageAutomatique)"
+		messageBrut "$_d_pseudo$(pseudo)$_d_messageAutomatique quitte la conversation ($_d_message$1$_d_messageAutomatique)"
 	else
-		messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique quitte la conversation"
+		messageBrut "$_d_pseudo$(pseudo)$_d_messageAutomatique quitte la conversation"
 	fi
 	
 	grep -vxF "$canal" "$HOME/online.cat" > "/tmp/online.$$"
 	cat "/tmp/online.$$" > "$HOME/online.cat"
 	rm "/tmp/online.$$"
 	
-	if [ `wc -l "$HOME/online.cat" | cut -d' ' -f 1` = 0 ]
+	if [ $( wc -l "$HOME/online.cat" | cut -d' ' -f 1 ) -eq 0 ]
 	then
 		rm  "$HOME/online.cat"
 	fi
@@ -269,27 +316,30 @@ deconnexion() {
 
 ########## Contrôle de l’exécution ##########
 
-# Termine tous les sous-programmes
+# Termine tous les sous-programmes.
+#{ tuerJobs }
 tuerJobs() {
-	for job in `jobs | sed 's/^.*\[//' | sed 's/\].*$//'`
+	for job in $( jobs | sed 's/^.*\[//' | sed 's/\].*$//' )
 	do
 		kill -term %$job
 	done
 }
 
-# Quitte le script
+# Quitte le script. Littéralement.
+#{ quitter $messageDeconnexion > $formuleDePolitesseUtilisateur }
 quitter() {
 	deconnexion "$1"
 	tuerJobs
-	echo "À bientôt $_ui_pseudo`pseudo`$_ui_defaut !"$_raz
+	echo "À bientôt $_ui_pseudo$(pseudo)$_ui_defaut !"$_raz
 	exit 0
 }
 
 ########## Contrôle du canal ##########
 
-# Créer le canal si nécessaire
-# Définit les droits pour que le groupe puisse lire le fichier
-# Demande le sujet si besoin
+# Créer le canal si nécessaire.
+# Définit les droits pour que le groupe puisse lire le fichier.
+# Demande le sujet si besoin.
+#{ creerCanal < $entreUtilisateur > $instructionsUtilisateur }
 creerCanal() {
 	if ! [ -f "$canal" ]
 	then
@@ -305,11 +355,12 @@ creerCanal() {
 	fi
 }
 
-# Afficher ou modifier (si $1 est défini) le sujet de la discussion 
+# Afficher ou modifier (si $1 est défini) le sujet de la discussion.
+#{ sujet [$nouveauSujet] > [$sujetActuel] 2> $messageErreur }
 sujet() {
 	if $_sujet
 	then
-		if [ "$1" = '' ]
+		if [ -z "$1" ]
 		then
 			afficherSujet
 		else
@@ -320,12 +371,14 @@ sujet() {
 	fi
 }
 
-# Rappeler le sujet de la discussion
+# Rappeler le sujet de la discussion.
+#{ afficherSujet > $sujetActuel }
 afficherSujet() {
 	tail -n 1 "$sujet"
 }
 
-# Afficher tous les sujets ayant été définis pour la conversation courante
+# Afficher tous les sujets ayant été définis pour la conversation courante.
+#{ sujets > $sujets }
 sujets() {
 	if $_sujet
 	then
@@ -336,18 +389,20 @@ sujets() {
 }
 
 # Changer le sujet de la conversation
+#{ definirSujet $nouveauSujet }
 definirSujet() {
 	echo "$1" >> "$sujet"
-	messageBrut "$_d_pseudo`pseudo`$_d_messageAutomatique a changé le sujet de la discussion"
+	messageBrut "$_d_pseudo$(pseudo)$_d_messageAutomatique a changé le sujet de la discussion"
 	echo "$_d_normal---- $1 ----$_d_normal" >> "$canal"
 }
 
 ########## Liste des utilisateurs ##########
 
 # Liste les utilisateurs du chat
-# premier argument : -t (tous les utilisateurs ayant un pseudo)
-#                    -c (tous les utilisateurs en ligne)
-#                    -d (tous les utilisateurs dans cette discussion) [defaut]
+# Option : -t (tous les utilisateurs ayant un pseudo)
+#          -c (tous les utilisateurs en ligne)
+#          -d (tous les utilisateurs dans cette discussion) [defaut]
+#{ listerUtilisateurs $option > $liste }
 listerUtilisateurs() {
 	if [ "$1" != -t ] && [ "$1" != -c ]
 	then
@@ -366,10 +421,11 @@ listerUtilisateurs() {
 		echo "$_ui_ligne-------------+---------------------$_ui_defaut"
 		echo " Utilisateur$_ui_ligne |$_ui_defaut Pseudo"
 		echo "$_ui_ligne-------------+---------------------$_ui_defaut"
-		liste=`ls "$HOME"/../*/pseudo.cat`
-		for fichier in $liste
+		# TODO Trouver une meilleure méthode sans perdre trop en efficacité
+		liste=( "$HOME"/../*/pseudo.cat )
+		for fichier in "${liste[@]}"
 		do
-			dossier=`dirname $fichier`
+			dossier=$( dirname $fichier )
 			if [ -f "$dossier/pseudo.cat" ] &&
 				( [ $option = -t ] ||
 					( [ -f "$dossier/online.cat" ] &&
@@ -377,12 +433,12 @@ listerUtilisateurs() {
 					)
 				) >> "$_journal" 2>&1
 			then
-				utilisateur=`basename $dossier`
-				if ! pu=`cat "$dossier/pseudo.cat"`
+				utilisateur=$( basename $dossier )
+				if ! pu=$( cat "$dossier/pseudo.cat" )
 				then
 					pu='[accès interdit]'
 				fi
-				pu=`echo "$pu"` # Pas de mise en forme bizarre
+				pu="$( echo $pu )" # Pas de mise en forme bizarre
 				printf $_ui_brut'%12s'$_ui_ligne' | '$_ui_pseudo'%-20s'$_ui_defaut'\n' \
 					"$utilisateur" \
 					"$pu"
@@ -392,9 +448,10 @@ listerUtilisateurs() {
 }
 
 ########## Aide ##########
-# Optimisé pour un affichage de 74 caractères de large (ne cherchez pas à comprendre)
+# Optimisé pour un affichage de 74 caractères de large (ne pas chercher à comprendre).
 
-# Créer un fichier de configuration personnalisée
+# Créer un fichier de configuration personnalisée.
+#{ aideConfiguration > $aide }
 aideConfiguration() {
 	echo "Pour configurer l’interface, créez le fichier $_ui_fichier$HOME/.chat.conf$_ui_defaut."
 	echo "Vous pouvez y modifier toutes les variables définies et documentées dans"
@@ -405,7 +462,8 @@ aideConfiguration() {
 	echo $_ui_brut"LANG='FR_fr.UTF8'"$_ui_defaut
 }
 
-# Documentation du protocole utilisé
+# Documentation du protocole utilisé.
+#{ aideProtocole > $aide }
 aideProtocole() {
 	echo "Ce script utilise un dérivé du protocole proposé en TP de système,"
 	echo "compatible avec celui-ci."
@@ -422,8 +480,23 @@ aideProtocole() {
 	echo
 	echo "Les fichiers d’échange sont situés dans le dossier $_ui_fichier/tmp$_ui_defaut (configurable) et"
 	echo "sont de la forme "$_ui_fichier"nomCanal.cat$_ui_defaut. Ils contiennent toute la conversation."
+	echo
+	echo "Un fichier supplémentaire "$_ui_fichier"nomCanal.suj$_ui_defaut permet de définir un sujet à la"
+	echo "conversation lorsque cette fonctionnalité est activée. Cette"
+	echo -n "fonctionnalité est actuellement $_ui_important"
+	
+	if $_sujet
+	then
+		echo -n "activée"
+	else
+		echo -n "désactivée"
+	fi
+	
+	echo "$_ui_defaut."
 }
 
+# Afficher un nombre donné d’espaces.
+#{ espaces $nombre > $espaces }
 espaces() {
 	for j in $( seq 0 "$1" )
 	do
@@ -432,6 +505,7 @@ espaces() {
 }
 
 # Citations disponibles
+#{ aideCitations > $aide }
 aideCitations() {
 	local i
 	local -ri len=16
@@ -464,7 +538,8 @@ aideCitations() {
 	done
 }
 
-# Documentation de la commande /users
+# Documentation de la commande `/users`.
+#{ aideUtilisateur > $aide }
 aideUtilisateur() {
 	echo "Il est possible d’accéder à trois listes d’utilisateurs différentes."
 	echo
@@ -479,7 +554,8 @@ aideUtilisateur() {
 	echo "              utilisant le même protocole (voir $_violet/aide$_ui_argument protocole$_ui_defaut)"
 }
 
-# Documentation de la commande /wait
+# Documentation de la commande `/wait`.
+#{ aideAttente > $aide }
 aideAttente() {
 	echo "La commande $_ui_commande/attendre$_ui_defaut permet d’attendre des utilisateurs."
 	echo
@@ -493,7 +569,8 @@ aideAttente() {
 	echo "l’arrivée est signalée dans l’interface de contrôle."
 }
 
-# Liste des commandes disponibles
+# Liste des commandes disponibles.
+#{ aideCommandes > $liste }
 aideCommandes() {
 	echo $_ui_titre'Commandes disponibles'$_ui_defaut
 	echo $_ui_ligne'---------------------'$_ui_defaut
@@ -519,6 +596,9 @@ aideCommandes() {
 	echo "                      saluer"
 }
 
+# Afficher la license sous laquelle cette application est publiée.
+# Option : -c  Afficher le texte exact.
+#{ licence [$option] > $texte }
 licence() {
 	if [ "$1" = "-c" ]
 	then
@@ -536,21 +616,22 @@ licence() {
 		echo $_ui_ligne'-------------'$_ui_defaut
 		echo "Lucien Guimier, 2014"
 		echo
-		echo "Ce programme est un logiciel libre ; vous pouvez le redistribuer"
-		echo "ou le modifier suivant les termes de la$_ui_important WTFPL, version 2$_ui_defaut, telle"
-		echo "que publiée par Sam Hocevar."
+		echo "Ce programme est un logiciel libre ; vous pouvez le redistribuer ou le"
+		echo "modifier suivant les termes de la$_ui_important WTFPL, version 2$_ui_defaut, telle que publiée par"
+		echo "Sam Hocevar."
 		echo
-		echo "Ce programme est distribué dans l’espoir qu’il sera utile, mais"
-		echo $_ui_important"sans aucune garantie$_ui_defaut, dans la limite de ce qui est autorisé par"
-		echo "la loi. Il n’y a en particulier aucune garantie tacite de"
-		echo $_ui_important"qualité marchande$_ui_defaut ou d’"$_ui_important"adéquation à un but particulier$_ui_defaut."
+		echo "Ce programme est distribué dans l’espoir qu’il sera utile, mais$_ui_important sans"
+		echo "aucune garantie$_ui_defaut, dans la limite de ce qui est autorisé par la loi. Il n’y"
+		echo "a en particulier aucune garantie tacite de$_ui_important qualité marchande$_ui_defaut ou "
+		echo "d’"$_ui_important"adéquation à un but particulier$_ui_defaut."
 		echo
 		echo "Vous pouvez consulter le texte complet de la license en exécutant la"
 		echo "commande $_ui_commande/licence $_ui_argument-c$_ui_defaut"
 	fi
 }
 
-# Liste des aides disponibles
+# Lister les aides disponibles.
+#{ aideGenerale > $liste }
 aideGenerale() {
 	echo "Format : $_ui_commande/aide $_ui_defaut["$_ui_argument"mot-clé$_ui_defaut]"
 	echo
@@ -563,7 +644,8 @@ aideGenerale() {
 	echo " — "$_ui_argument"citations$_ui_defaut     Lister les citations disponibles"
 }
 
-# Gestion de l’aide
+# Commande `/aide` : redirection vers la page demandée.
+#{ aide $page? > $contenu }
 aide() {
 	case "$1" in
 		commandes)
@@ -587,12 +669,14 @@ aide() {
 
 ########## Interface de contrôle ##########
 
-# Indiquer qu’une fonctionnalité est désactivée
+# Indiquer qu’une fonctionnalité est désactivée.
+#{ desactive 2> $messageErreur }
 desactive() {
-	echo $_ui_erreur"Cette fonctionnalité est désactivée"$_ui_normal
+	afficherErreur 'Cette fonctionnalité est désactivée'
 }
 
-# Affiche le début du prompt
+# Affiche le début du prompt.
+#{ ligneEntre > $instructionsTerminal }
 ligneEntree() {
 	echo -n "$_ui_prompt $_ui_promptContenu"
 }
@@ -634,10 +718,12 @@ executerCommande() {
 		utilisateurs|users)
 			listerUtilisateurs "$2";;
 		*)
-			echo $_ui_erreur"Commande inconnue « $_ui_brut$1$_ui_erreur »$_ui_normal"
+			afficherErreur "Commande inconnue « $_ui_brut$1$_ui_erreur »"
 	esac
 }
 
+# Gestionnaire de signal d’arrêt.
+#{ signaled > $formuleDePolitesseUtilisateur }
 signaled() {
 	echo
 	echo "Quitté via un signal"
@@ -646,7 +732,8 @@ signaled() {
 
 trap 'signaled' SIGINT # Ctrl-C
 
-# Attend les instruction de l’utilisateur et les applique
+# Attend les instruction de l’utilisateur et les applique.
+#{ executerCommandes < $commandesUtilisateur }
 executerCommandes() {
 	ligneEntree
 	while read ligne
@@ -654,7 +741,7 @@ executerCommandes() {
 		echo -n $_ui_defaut
 		if ! [ "$ligne" = '' ]
 		then
-			premier=`echo "$ligne" | cut -c 1`
+			premier=$( echo "$ligne" | cut -c 1 )
 			if [ "$premier" = / ]
 			then
 				commande=$( firstArg $ligne | cut -c 1 --complement )
@@ -683,20 +770,21 @@ executerCommandes() {
 # Vérification de la présence
 if [ $# -lt 1 ]
 then
-	echo $_ui_erreur"Le premier argument doit indiquer le canal de discussion"$_normal
+	afficherErreur 'Le premier argument doit indiquer le canal de discussion'
 	exit 1
 fi
 
 # Mise à disposition des scripts
-discussion="$1"
-canal="$_dossier/$1.cat"
-sujet="$_dossier/$1.suj"
+declare discussion="$1"
+declare canal="$_dossier/$1.cat"
+declare sujet="$_dossier/$1.suj"
 
 ##### Pseudo de l’utilisateur #####
 
 # Définition si absent
 if [ ! -f "$HOME/pseudo.cat" ]
 then
+	local pseudo
 	echo 'Vous n’avez pas de pseudo, veuillez en définir un'
 	while [ "$pseudo" == "" ]
 	do

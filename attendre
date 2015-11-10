@@ -19,7 +19,7 @@ source "$IP/lib"
 
 connecte=0
 declare -a connectes
-nb=`expr $# - 1`
+let nb=$#-1
 
 if [ "$#" -gt 2 ] && [ "$2" = -c ]
 then
@@ -38,25 +38,26 @@ else
 	while [ $connecte -lt $nb ]
 	do
 		connecte=0
-		for i in `seq 2 $#`
+		for i in $( seq 2 $# )
 		do
 			if [ _${connectes[$i]} != _1 ]
 			then
-				u=`echo $@ | cut -d' ' -f "$i"`
-				hu=`home $u`
+				u=$( echo $@ | cut -d' ' -f "$i" )
+				hu=$( home $u )
 				if [ -f "$hu/online.cat" ] && ( $tous || grep -xF "$canal" "$hu/online.cat" >> "$_journal" 2>&1 )
 				then
-					pu=`cat "$hu/pseudo.cat"`
+					pu=$( cat "$hu/pseudo.cat" )
 					connectes[$i]=1
-					pseudo=`cat "$HOME/pseudo.cat"`
+					pseudo=$( cat "$HOME/pseudo.cat" )
 					me "salue $pu"
 					echo
 					echo $_ui_pseudo$pu$_ui_defaut est arrivé
 					ligneEntree
-					connecte=`expr $connecte + 1`
+					let ++connecte
 				fi
 			fi
 		done
 		sleep 1
 	done
 fi
+
