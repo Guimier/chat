@@ -40,6 +40,25 @@ then
 	source "$HOME/.chat.conf"
 fi
 
+########## Découpage ##########
+
+__firstArg() {
+	echo $1
+}
+
+firstArg() {
+	__firstArg $@
+}
+
+__otherArgs() {
+	shift
+	echo $@
+}
+
+otherArgs() {
+	__otherArgs $@
+}
+
 ########## Aléatoire ##########
 
 # Renvoie un nombre aléatoire entre 0 (inclus) et $1 (exclus)
@@ -93,6 +112,23 @@ citer() {
 		messageBrut "$_d_pseudo`pseudo` :$_d_message $q"
 	else
 		echo "Citation inexistante"
+	fi
+}
+
+repondre() {
+	local psdo=$( firstArg "$1" )
+	local msg=$( otherArgs "$1" )
+	
+	if [ -z "$psdo" ]
+	then
+		echo $_ui_erreur'Sans destination, peu de chance que votre réponse arrive jamais !'$_ui_defaut
+	else
+		if [ -z "$msg" ]
+		then
+			reponse "$psdo" $_d_messageAutomatique"Pas de réponse ; peut-être « 42 » vous-conviendra-t-il ?"
+		else
+			reponse "$psdo" "$msg"
+		fi
 	fi
 }
 
@@ -177,6 +213,13 @@ me() {
 # Envoie un message normal ayant comme contenu le premier argument
 message() {
 	messageBrut "$_d_pseudo`pseudo` —$_d_message $1"
+}
+
+# Réponse à un autre utilisateur
+# Premier argument : nom de l’autre utilisateur
+# Second argument : message
+reponse() {
+	messageBrut "$_d_pseudo`pseudo` $_d_messageAutomatique@ $_d_pseudo$1 —$_d_message $2"
 }
 
 ########## Gestion de la connexion ##########
@@ -463,6 +506,7 @@ aideCommandes() {
 	echo "$_ui_commande/quitter$_ui_defaut $_ui_argument…$_ui_defaut            Quitter la discussion"
 	echo "$_ui_commande/tirer$_ui_defaut                Tirer un nombre aléatoire"
 	echo "$_ui_commande/citer$_ui_defaut                Citer un grand auteur"
+	echo "$_ui_commande/répondre$_ui_defaut ${_ui_argument}pseudo msg$_ui_defaut  Répondre à un autre utilisateur"
 	
 	if $_sujet
 	then
@@ -579,6 +623,8 @@ executerCommande() {
 			definirPseudo "$2";;
 		quitter|quit)
 			quitter "$2";;
+		répondre|answer)
+			repondre "$2";;
 		sujet)
 			sujet "$2";;
 		sujets)
@@ -611,8 +657,8 @@ executerCommandes() {
 			premier=`echo "$ligne" | cut -c 1`
 			if [ "$premier" = / ]
 			then
-				commande=`echo $ligne | cut -d' ' -f 1 | cut -c 1 --complement`
-				arguments=`echo $ligne | cut -d' ' -f 1 --complement`
+				commande=$( firstArg $ligne | cut -c 1 --complement )
+				arguments=$( otherArgs $ligne )
 				if [ "$arguments" = "$ligne" ]
 				then
 					arguments=''
