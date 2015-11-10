@@ -56,12 +56,23 @@ tirage() {
 
 # Fait le café (ou pas)
 # Premier argument : commande initiale
+# Second argument : paramètres supplémentaires
 cafe() {
-	case `aleatoire 4` in
-		0)         me $_d_messageAutomatique'doit changer le filtre de la cafetière';;
-		1)         me $_d_messageAutomatique'a oublié de racheter du café';;
-		2)         message "$_d_messageAutomatique$1://172.17.255.42 Erreur 418";;
-		3)         me $_d_messageAutomatique'a oublié que l’excès de café nuit au sommeil';;
+	local ch;
+	
+	if [ -n "$2" ]
+	then
+		ch="$2"
+	else
+		ch=$( aleatoire 5 )
+	fi
+	
+	case "$ch" in
+		0|filtre)   me $_d_messageAutomatique'doit changer le filtre de la cafetière';;
+		1|courses)  me $_d_messageAutomatique'a oublié de racheter du café';;
+		2|teapot)   message $_d_messageAutomatique"$1://172.17.255.79 418 I'm a teapot";;
+		3|sommeil)  me $_d_messageAutomatique'a oublié que l’excès de café nuit au sommeil';;
+		*)  message $_d_messageAutomatique"HTCPCP/1.0 400 Bad request";;
 	esac
 }
 
@@ -155,7 +166,12 @@ messageBrut() {
 
 # Envoie un message indiquant ce que fait l’utilisateur
 me() {
-	messageBrut "***** $_d_pseudo`pseudo`$_d_message $1"
+	if [ -z "$1" ]
+	then
+		echo $_ui_erreur"Vous devez donner un statut"$_ui_defaut
+	else
+		messageBrut "***** $_d_pseudo`pseudo`$_d_message $1"
+	fi
 }
 
 # Envoie un message normal ayant comme contenu le premier argument
@@ -298,7 +314,7 @@ listerUtilisateurs() {
 	fi
 	
 	(
-		case $option in
+		case "$option" in
 			-t) echo $_ui_titre'Tous les utilisateurs'$_ui_defaut;;
 			-c) echo $_ui_titre'Tous les utilisateurs connectés'$_ui_defaut;;
 			-d) echo $_ui_titre'Tous les utilisateurs de ce canal'$_ui_defaut
@@ -440,7 +456,7 @@ aideCommandes() {
 	echo $_ui_ligne'---------------------'$_ui_defaut
 	echo "$_ui_commande/aide$_ui_defaut $_ui_argument…$_ui_defaut               Afficher cette aide"
 	echo "$_ui_commande/clr$_ui_defaut                  Vider l’écran de commande"
-	echo "$_ui_commande/café$_ui_defaut                 Faire le café"
+	echo "$_ui_commande/café$_ui_defaut [$_ui_argument…$_ui_defaut]             Faire le café"
 	echo "$_ui_commande/licence$_ui_defaut [$_ui_argument-f$_ui_defaut]         Afficher la licence"
 	echo "$_ui_commande/me$_ui_defaut $_ui_argument…$_ui_defaut                 Indiquer ce que vous faites"
 	echo "$_ui_commande/pseudo$_ui_defaut $_ui_argument…$_ui_defaut             Changer votre pseudo"
@@ -542,7 +558,7 @@ ligneEntree() {
 # Quelques commandes en anglais (non documentées) sont conservées pour
 # leur concision
 executerCommande() {
-	case $1 in
+	case "$1" in
 		aide|help)
 			aide "$2" | $_more;;
 		attendre|wait)
@@ -551,8 +567,10 @@ executerCommande() {
 			( which clear >> "$_journal" ) && clear;;
 		citer)
 			citer "$2";;
+		# La liste suivante contient tous les identifiants définis par la RFC 2324 (règle
+		# grammaticale `coffee-scheme`).
 		koffie|qæhvæ|قهوة|akeita|koffee|kahva|kafe|café|咖啡|kava|káva|kaffe|coffee|kafo|kohv|kahvi|Kaffee|καφέ|कौफी|コーヒー|커피|кофе|กาแฟ)
-			cafe "$1";;
+			cafe "$1" "$2";;
 		licence)
 			licence "$2" | $_more;;
 		me)
@@ -646,3 +664,4 @@ fi
 	chmod g+x "$HOME"
 	chmod g+r "$HOME/pseudo.cat"
 ) 2>> "$_journal"
+
