@@ -735,8 +735,7 @@ trap 'signaled' SIGINT # Ctrl-C
 # Attend les instruction de l’utilisateur et les applique.
 #{ executerCommandes < $commandesUtilisateur }
 executerCommandes() {
-	ligneEntree
-	while read ligne
+	while read -rep "$( ligneEntree )" ligne
 	do
 		echo -n $_ui_defaut
 		if ! [ "$ligne" = '' ]
@@ -757,7 +756,6 @@ executerCommandes() {
 			fi
 		fi
 		titreFenetreConverser
-		ligneEntree
 	done
 	
 	signaled # Ctrl-D
